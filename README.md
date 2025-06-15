@@ -48,6 +48,7 @@ This model predicts 9 interpretable color manipulation parameters to apply a mor
 
 ---
 
+## Graph of parametric adjustment model architecture
 ![Model Architecture](images/trained_model_2025-06-15_05-18-22.keras.svg)
 
 

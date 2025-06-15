@@ -1,16 +1,32 @@
 from datetime import datetime
 import numpy as np
-import matplotlib.pyplot as plt
-from tensorflow.keras.layers import (
-    Conv2D, BatchNormalization, Dropout, MaxPooling2D, GlobalAveragePooling2D, Dense, Input
-)
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.utils import Sequence, plot_model
-from tensorflow.keras.saving import register_keras_serializable
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.callbacks import EarlyStopping, TensorBoard
-from tensorflow import keras
+from matplotlib import pyplot
 import tensorflow as tf
+from tensorflow import keras
+import os
+
+"""
+================================================================================
+Digital Darkroom AI - Parametric Adjustment Model
+================================================================================
+This script defines, trains, and evaluates a deep learning model for parametric 
+color adjustment of images. The model learns to predict a set of color 
+transformation parameters that, when applied to an input image, produce a 
+target image with desired color edits. 
+Key Features:
+-------------
+- Loads paired source and target images for supervised learning.
+- Defines a convolutional neural network that predicts 9 color adjustment parameters.
+- Applies custom color transformations via a Keras custom layer.
+- Saves trained models with timestamped filenames.
+- Visualizes input and output images after inference.
+Usage:
+------
+1. Place source and target images in the specified directories.
+2. Run the script to train the model and monitor progress via TensorBoard.
+3. Use the trained model to apply learned color adjustments to new images.
+"""
+
 
 # Enable GPU memory growth
 if tf.config.experimental.list_physical_devices('GPU'):
@@ -21,24 +37,24 @@ if tf.config.experimental.list_physical_devices('GPU'):
         print(e)
 
 # Constants
-LOSS_METHOD     = "mse"         # mse:Mean Squared Error, mae:Mean Average Error
+LOSS_METHOD     = "mse"       
 ACTIVATIONMETHOD= 'relu'
-INPUTSHAPE      = (150,150,3)   # Image size, and number of channels
+INPUTSHAPE      = (150,150,3)   # Image size and number of color channels
 BASEFILTERS     = 32
 DROPOUTRATE     = 0.3
 INITIALIZER     = 'he_normal'
 OUTPUTUNITS     = 9             # How many output values
-BATCH_SIZE      = 64
-EPOCH_SIZE      = 100
-CHANNEL_COUNT   = 3             # 3 color channels, no transparency
-SOURCE_DIR      = "../dataset/source/"
-TARGET_DIR      = "../dataset/target/"
-TEST_DIR        = "../Images/21229.png"
+BATCH_SIZE      = 4
+EPOCH_SIZE      = 50
+BASE_DIR        = os.path.dirname(os.path.abspath(__file__))
+SOURCE_DIR      = os.path.join(BASE_DIR, '..', 'dataset', 'source')
+TARGET_DIR      = os.path.join(BASE_DIR, '..', 'dataset', 'target')
+TEST_DIR        = os.path.join(BASE_DIR, '..', 'Images', '21229.png')
 VAL_PERCENT     = 0.2           # Percentage of dataset used for validation
 IMAGES_TO_LOG   = 15
 
 
-datagen = ImageDataGenerator(rescale=1.0/255.0, validation_split=VAL_PERCENT)
+datagen = keras.preprocessing.image.ImageDataGenerator(rescale=1.0/255.0, validation_split=VAL_PERCENT)
 
 source_train = datagen.flow_from_directory(
     SOURCE_DIR,
@@ -85,53 +101,12 @@ val_generator = (
     (X_batch, Y_batch) for X_batch, Y_batch in zip(source_val, target_val)
 )
 
-# Custom layer
-@register_keras_serializable()
+@keras.saving.register_keras_serializable()     # Is this needed?
 
-# class applyParameters(tf.keras.layers.Layer):
-#     def invert_image(image):
-#         inverted = 255 - image
-#         return inverted
-
-#     def channel_exposure_adjust(image, red_min, red_max, green_min, green_max, blue_min, blue_max):
-
-#         def remap_channel(channel, minimum, maximum):
-#             channel = (channel - minimum) / (maximum - minimum) * 255.0
-#             return np.clip(channel, 0, 255)
-    
-#         output_image(redchannel) = remap_channel(image_float[..., 0], b_min, b_max)
-#         output_image(bluechannel) = remap_channel(image_float[..., 1], g_min, g_max)
-#         output_image(greenchannel) = remap_channel(image_float[..., 2], r_min, r_max)
-
-#         return output_image
-    
-#     def color_balance(image, cyan_red, magenta_green, yellow_blue):
-#         out_image = image
-
-#         out_image(redchannel) += cyan_red
-#         out_image(bluechannel) += magenta_green
-#         out_image(greenchannel) += yellow_blue
-
-#         return out_image
-
-        
-
-#     def call(self, inputs):
-#         image, parameters = inputs  # image: (batch, 256, 256, 3), matrix: (?)
-#         # Take 9 parameters as input
-#         # Also take the original image as input
-#         # apply the parametrs to the image
-
-#         finalImage = invert_image(image)
-#         finalImage = channel_exposure_adjust(finalImage, parameters[0], parameters[1], parameters[3], parameters[4], parameters[5])
-#         finalImage = color_balance(finalImage, parameters[6], parameters[7], parameters[8])
-#         return finalImage
-
+# Custom layer. Applies color edits to input image
 class ApplyParameters(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-
 
     def call(self, inputs):
         input_image, parameters = inputs
@@ -189,60 +164,60 @@ class ApplyParameters(tf.keras.layers.Layer):
 input_image = keras.Input(shape=INPUTSHAPE, name="image_input")
 
 # Encoder block 1
-x = Conv2D(BASEFILTERS, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(input_image)
-x = BatchNormalization()(x)
-x = Dropout(DROPOUTRATE)(x)
-x = Conv2D(BASEFILTERS, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
-x = BatchNormalization()(x)
-x = MaxPooling2D((2, 2))(x)
+x = keras.layers.Conv2D(BASEFILTERS, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(input_image)
+x = keras.layers.BatchNormalization()(x)
+x = keras.layers.Dropout(DROPOUTRATE)(x)
+x = keras.layers.Conv2D(BASEFILTERS, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
+x = keras.layers.BatchNormalization()(x)
+x = keras.layers.MaxPooling2D((2, 2))(x)
 
 # Encoder block 2
-x = Conv2D(BASEFILTERS * 2, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
-x = BatchNormalization()(x)
-x = Dropout(DROPOUTRATE)(x)
-x = Conv2D(BASEFILTERS * 2, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
-x = BatchNormalization()(x)
-x = MaxPooling2D((2, 2))(x)
+x = keras.layers.Conv2D(BASEFILTERS * 2, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
+x = keras.layers.BatchNormalization()(x)
+x = keras.layers.Dropout(DROPOUTRATE)(x)
+x = keras.layers.Conv2D(BASEFILTERS * 2, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
+x = keras.layers.BatchNormalization()(x)
+x = keras.layers.MaxPooling2D((2, 2))(x)
 
 # Encoder block 3
-x = Conv2D(BASEFILTERS * 4, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
-x = BatchNormalization()(x)
-x = Dropout(DROPOUTRATE)(x)
-x = Conv2D(BASEFILTERS * 4, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
-x = BatchNormalization()(x)
-x = MaxPooling2D((2, 2))(x)
+x = keras.layers.Conv2D(BASEFILTERS * 4, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
+x = keras.layers.BatchNormalization()(x)
+x = keras.layers.Dropout(DROPOUTRATE)(x)
+x = keras.layers.Conv2D(BASEFILTERS * 4, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
+x = keras.layers.BatchNormalization()(x)
+x = keras.layers.MaxPooling2D((2, 2))(x)
 
 # Encoder block 4
-x = Conv2D(BASEFILTERS * 8, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
-x = BatchNormalization()(x)
-x = Dropout(DROPOUTRATE)(x)
-x = Conv2D(BASEFILTERS * 8, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
-x = BatchNormalization()(x)
-x = MaxPooling2D((2, 2))(x)
+x = keras.layers.Conv2D(BASEFILTERS * 8, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
+x = keras.layers.BatchNormalization()(x)
+x = keras.layers.Dropout(DROPOUTRATE)(x)
+x = keras.layers.Conv2D(BASEFILTERS * 8, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
+x = keras.layers.BatchNormalization()(x)
+x = keras.layers.MaxPooling2D((2, 2))(x)
 
 # Bottleneck
-x = Conv2D(BASEFILTERS * 16, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
-x = BatchNormalization()(x)
-x = Dropout(DROPOUTRATE)(x)
-x = Conv2D(BASEFILTERS * 16, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
-x = BatchNormalization()(x)
+x = keras.layers.Conv2D(BASEFILTERS * 16, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
+x = keras.layers.BatchNormalization()(x)
+x = keras.layers.Dropout(DROPOUTRATE)(x)
+x = keras.layers.Conv2D(BASEFILTERS * 16, (3, 3), activation=ACTIVATIONMETHOD, kernel_initializer=INITIALIZER, padding='same')(x)
+x = keras.layers.BatchNormalization()(x)
 
 # Global pooling + dense projection
-x = GlobalAveragePooling2D()(x)
-x = Dense(512, activation=ACTIVATIONMETHOD)(x)
-x = Dense(256, activation=ACTIVATIONMETHOD)(x)
-parameters = Dense(9, activation='sigmoid', name='parameters')(x)  # Final layer with 9 values in [0, 1]
+x = keras.layers.GlobalAveragePooling2D()(x)
+x = keras.layers.Dense(512, activation=ACTIVATIONMETHOD)(x)
+x = keras.layers.Dense(256, activation=ACTIVATIONMETHOD)(x)
+parameters = keras.layers.Dense(9, activation='sigmoid', name='parameters')(x)  # Final layer with 9 values in [0, 1]
 output_image = ApplyParameters()([input_image,parameters])
 
-
+# Define model
 model = tf.keras.Model(inputs=input_image, outputs=output_image)
 
 # Compiling the model
-model.compile(optimizer=Adam(), loss=LOSS_METHOD)
+model.compile(optimizer=keras.optimizers.Adam(), loss=LOSS_METHOD)
 
 # Stop training if model does not improve.
-callback = EarlyStopping(
-    verbose     = 1,
+callback = keras.callbacks.EarlyStopping(
+    verbose     = 0,
     monitor     = "loss",
     mode        = "min",
     patience    = 20,
@@ -255,20 +230,10 @@ callback = EarlyStopping(
 # To host server, run following command in terminal:
 #   tensorboard --logdir=logs/fit
 log_dir = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 class ImageLoggerCallback(tf.keras.callbacks.Callback):
     def __init__(self, log_dir, sample_images, sample_targets, freq=1, num_images_to_log=3):
-        """
-        Logs input, predicted, and target images to TensorBoard during training.
-
-        Args:
-            log_dir (str): Base directory where logs will be written.
-            sample_images (np.array): Input images to log predictions for.
-            sample_targets (np.array): Ground-truth target images.
-            freq (int): Frequency (in epochs) at which to log images.
-            num_images_to_log (int): Number of images to log each time.
-        """
         super().__init__()
         self.file_writer = tf.summary.create_file_writer(log_dir + '/images')
         self.sample_images = sample_images[:num_images_to_log]
@@ -309,8 +274,6 @@ image_logger = ImageLoggerCallback(
 # Print information about the model
 model.summary()
 
-#sys.exit()
-
 # Train the model
 model.fit(
     train_generator, 
@@ -330,10 +293,8 @@ model.save(f"trainedModels/trained_model_{current_time}.keras")
 print(f"Model saved to trainedModels/trained_model_{current_time}.keras")
 
 # --- LOAD AND PREPROCESS A TEST IMAGE ---
-from tensorflow.keras.preprocessing.image import load_img, img_to_array
-
-img = load_img(TEST_DIR, target_size=INPUTSHAPE[:2])  # Resize to match input
-img_array = img_to_array(img) / 255.0  # Normalize to [0,1]
+img = keras.load_img(TEST_DIR, target_size=INPUTSHAPE[:2])  # Resize to match input
+img_array = keras.img_to_array(img) / 255.0  # Normalize to [0,1]
 img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension → (1, 256, 256, 3)
 
 # --- PREDICT ---
@@ -341,17 +302,17 @@ output_array = model.predict(img_array)  # shape: (1, 256, 256, 3)
 output_image = output_array[0]  # Remove batch dimension
 
 # --- DISPLAY INPUT AND OUTPUT ---
-plt.figure(figsize=(10, 5))
-plt.subplot(1, 2, 1)
-plt.imshow(img_array[0])
-plt.title("Input Image")
-plt.axis("off")
+pyplot.figure(figsize=(10, 5))
+pyplot.subplot(1, 2, 1)
+pyplot.imshow(img_array[0])
+pyplot.title("Input Image")
+pyplot.axis("off")
 
-plt.subplot(1, 2, 2)
-plt.imshow(np.clip(output_image, 0, 1))  # Ensure values are in displayable range
-plt.title("Transformed Output")
-plt.axis("off")
+pyplot.subplot(1, 2, 2)
+pyplot.imshow(np.clip(output_image, 0, 1))  # Ensure values are in displayable range
+pyplot.title("Transformed Output")
+pyplot.axis("off")
 
-plt.show()
+pyplot.show()
 
 

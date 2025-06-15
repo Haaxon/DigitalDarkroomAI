@@ -2,8 +2,42 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-INPUT_IMAGE = "fake_negative.jpg"
-RED_MIN     = 60        # ranges suggest by Geppetto: 40-80
+"""
+manual_image_inverter.py
+
+A script for manually inverting and color-correcting scanned photographic negatives.
+
+Overview:
+---------
+This tool provides a step-by-step workflow for manually converting a photographic negative into a positive image,
+with fine-tuned control over color channel levels and color balance. It leverages OpenCV and NumPy for
+image processing, and Matplotlib for visualization.
+
+Workflow:
+---------
+1. Load a scanned negative image.
+2. Display the original image.
+3. Invert the image to create a positive.
+4. Adjust red, green, and blue channel levels using customizable min/max values.
+5. Apply color balance corrections (cyan-red, magenta-green, yellow-blue).
+6. Display each step for visual feedback.
+
+Usage:
+------
+- Set the `INPUT_IMAGE` variable to your image file path.
+- Optionally adjust the channel min/max and color balance constants to suit your negative.
+- Run the script. Each processing step will be shown using Matplotlib.
+- To save the final result, uncomment the `cv2.imwrite` line at the end.
+
+Example:
+--------
+    INPUT_IMAGE = "path/to/your/negative.jpg"
+    # Adjust RED_MIN, RED_MAX, etc. as needed
+    # Run the script to process and visualize the result.
+"""
+
+INPUT_IMAGE = ""        # ranges suggest by Geppetto:
+RED_MIN     = 60        # 40-80
 RED_MAX     = 250       # 230-255
 GREEN_MIN   = 45        # 30-70
 GREEN_MAX   = 240       # 220-250

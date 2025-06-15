@@ -5,22 +5,48 @@ from glob import glob
 import numpy as np
 import matplotlib.pyplot as plt
 
+"""
+This script generates synthetic imitations of C41 color film scans from standard positive images.
+
+The main purpose is to simulate the visual characteristics of scanned color negatives, including:
+- The orange mask tint typical of C41 film (by shifting color channels).
+- Reduced contrast and compressed dynamic range in each color channel.
+- Inversion of the image to mimic the negative format.
+
+Key Features:
+- Processes all PNG images in a specified input directory.
+- Applies randomized color tints and channel compression to each image to simulate film variability.
+- Inverts the processed image to produce a negative.
+- Saves the resulting synthetic negative images to an output directory.
+- Supports configuration for color shifts, channel compression ranges, and output overwriting.
+
+Configuration:
+- INPUT_DIR: Directory containing input images.
+- OUTPUT_DIR: Directory to save processed images.
+- OVERWRITE: Whether to overwrite existing output files.
+- STD_DEV: Standard deviation for randomization of color and channel parameters.
+- CYAN_RED, MAGENTA_GREEN, YELLOW_BLUE: Parameters for simulating the orange mask.
+- RED_MIN, RED_MAX, GREEN_MIN, GREEN_MAX, BLUE_MIN, BLUE_MAX: Channel compression ranges.
+
+Usage:
+- Set INPUT_DIR and OUTPUT_DIR.
+- Run the script to generate synthetic C41 negative scans.
+"""
+
 # CONFIGURATION
-INPUT_DIR   = "../dataset/source/"
-OUTPUT_DIR  = "../dataset/target/"
-OVERWRITE   = False
-STD_DEV = 15
-# These simulate the orange mask tint
-CYAN_RED        = -100   # Add red
-MAGENTA_GREEN   = 5      # Slight magenta tint
-YELLOW_BLUE     = 50     # Reduce blue
-# Simulate low contrast of scanned negatives
-RED_MIN     = 50
-RED_MAX     = 220
-GREEN_MIN   = 50
-GREEN_MAX   = 210
-BLUE_MIN    = 60
-BLUE_MAX    = 200
+INPUT_DIR       = ""    # Directory containing input images.
+OUTPUT_DIR      = ""    # Directory to save processed images.
+OVERWRITE       = False # Whether to overwrite existing output files.
+STD_DEV         = 15        # Standard deviation for randomization of color and channel parameters.
+CYAN_RED        = -100   # Add red (simulates orange mask tint).
+MAGENTA_GREEN   = 5      # Slight magenta tint (simulates orange mask tint).
+YELLOW_BLUE     = 50     # Reduce blue (simulates orange mask tint).
+RED_MIN         = 50    # Minimum red channel value (simulates low contrast of scanned negatives).
+RED_MAX         = 220   # Maximum red channel value (simulates low contrast of scanned negatives).
+GREEN_MIN       = 50    # Minimum green channel value (simulates low contrast of scanned negatives).
+GREEN_MAX       = 210   # Maximum green channel value (simulates low contrast of scanned negatives).
+BLUE_MIN        = 60    # Minimum blue channel value (simulates low contrast of scanned negatives).
+BLUE_MAX        = 200   # Maximum blue channel value (simulates low contrast of scanned negatives).
 
 # Ensure output folder exists
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -95,8 +121,6 @@ print(f"Found {len(input_files)} PNG files")
 
 counter = 0
 for input_path in input_files:
-    if counter == 10:
-        break
 
     filename = os.path.basename(input_path)
     output_path = os.path.join(OUTPUT_DIR, filename)

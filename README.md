@@ -34,19 +34,22 @@ Photographers, both in home setups and in professional lab environments, typical
 
 This model generate a single 3×3 matrix from the input image that is applied uniformly across all pixels in the image. The matrix performs global color correction while leaving image structure untouched.
 
-- Simpl
+- Simple
 - Fast inference
 - Limited adaptability to local color variance
 
 ### 2. Parametric Adjustment Model
 
-This model predicts 9 interpretable color manipulation parameters to apply a more flexible, nonlinear transformation to the image. Parameters control highlights, shadows, and midtones for each RGB channel, offering more nuanced adjustments.
+This model predicts 9 interpretable color manipulation parameters to apply a more flexible, nonlinear transformation to the image.
 
-- More expressive than a matrix
+- More flexible than a matrix
 - Still interpretable and controllable
 - Better suited for variable lighting and exposure conditions
 
 ---
+
+![Model Architecture](images/trained_model_2025-06-15_05-18-22.keras.svg)
+
 
 ## Limitations
 

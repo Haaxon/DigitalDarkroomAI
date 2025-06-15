@@ -10,6 +10,28 @@ from tensorflow.keras.callbacks import EarlyStopping, TensorBoard
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+"""
+================================================================================
+Color Correction Matrix Model Generator
+================================================================================
+
+This script defines and trains a deep learning model for learning a color 
+correction matrix (CCM) that transforms input images to match target images. 
+It is designed for use in digital darkroom or image color correction tasks.
+
+--------------------------------------------------------------------------------
+Usage Notes:
+--------------------------------------------------------------------------------
+- Set `SOURCE_DIR` and `TARGET_DIR` to the directories containing your source 
+  and target images, respectively.
+- To monitor training progress and image outputs, run TensorBoard with:
+        tensorboard --logdir=logs/fit
+- The model expects images of shape (150, 150, 3) and outputs images of the 
+  same shape after applying the learned color correction matrix.
+
+================================================================================
+"""
+
 # Enable GPU memory growth
 if tf.config.experimental.list_physical_devices('GPU'):
     try:
@@ -27,8 +49,8 @@ BATCH_SIZE      = 128
 EPOCH_SIZE      = 30
 INPUT_SIZE      = (150,150)     
 CHANNEL_COUNT   = 3             # 3 color channels, no transparency
-SOURCE_DIR      = "../dataset/source/"
-TARGET_DIR      = "../dataset/target/"
+SOURCE_DIR      = ""
+TARGET_DIR      = ""
 VAL_PERCENT     = 0.2           # Percentage of dataset used for validation
 IMAGES_TO_LOG   = 15
 
@@ -124,16 +146,6 @@ tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 class ImageLoggerCallback(tf.keras.callbacks.Callback):
     def __init__(self, log_dir, sample_images, sample_targets, freq=1, num_images_to_log=3):
-        """
-        Logs input, predicted, and target images to TensorBoard during training.
-
-        Args:
-            log_dir (str): Base directory where logs will be written.
-            sample_images (np.array): Input images to log predictions for.
-            sample_targets (np.array): Ground-truth target images.
-            freq (int): Frequency (in epochs) at which to log images.
-            num_images_to_log (int): Number of images to log each time.
-        """
         super().__init__()
         self.file_writer = tf.summary.create_file_writer(log_dir + '/images')
         self.sample_images = sample_images[:num_images_to_log]
